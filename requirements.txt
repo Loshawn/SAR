@@ -1,0 +1,8 @@
+numpy
+scipy
+pandas
+netCDF4
+rasterio
+matplotlib
+opencv-python
+opencv-contrib-python
