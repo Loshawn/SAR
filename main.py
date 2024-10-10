@@ -1,26 +1,41 @@
 import Model
 import numpy as np
 from utils import func, filter
+import matplotlib.pyplot as plt
 
-# 文件路径
-tif_file = r"E:\大创\SAR风能评估\data\subset_gangzhuao_20240228_msk.tif"
+# SAR 卫星方位角
+platformHeading = -12.28185800368421
+SAR_azimuth  = platformHeading + 90
 
-# 读取数据，size 可以为 int、 list、 tuple 类型，详见函数注释
-# data 为形状 [band count, height, width] 的矩阵
-data = func.read_tif(tif_file, size=-1)
+nc_path = r"C:\Users\Loshawn\Documents\Daiso\SAR-wind\code\shenzhen_20240204T103344.nc"
+phi_path = r"data\data2.nc"
 
-# 顺序为snap导出时波段的顺序
-sigma0 = data[0][::5]
-latitude = data[1][::5]
-longitude = data[2][::5]
-inc = data[3][::5]
-phi = np.ones(sigma0.shape) * 50
+# 读取数据
+lon, lat, sigma0, inc = func.read_nc(
+    nc_path=nc_path,
+    keys=["lon", "lat", "Sigma0_VV", "IncidentAngle_VH"],
+    step=50) # 原分辨率 10 m, 下采样 step = 50 分辨率 500 m 
 
-# 滤波器
-Filter = filter.Filter()
+phi = func.fit_phi(phi_path, lon_fit=lon, lat_fit=lat) - SAR_azimuth
 
+
+# 反演
 model = Model.CMOD5()
 v = model.inverse(sigma0_obs=sigma0, phi=phi, incidence=inc, iterations=10)
+v = func.remove_outliers(v)  # 去极值化, 保留前 99.5% 的风速数据
+func.draw(v, lon, lat, "data/CMOD5.png")
 
-# 画图， 经纬度、保存路径可以省略
-func.draw_2D(v, longitude, latitude, "data/CMOD5_N.png")
+model = Model.CMOD5_N()
+v = model.inverse(sigma0_obs=sigma0, phi=phi, incidence=inc, iterations=10)
+v = func.remove_outliers(v)
+func.draw(v, lon, lat, "data/CMOD5_N.png")
+
+model = Model.CMOD4()
+v = model.inverse(sigma0_obs=sigma0, phi=phi, incidence=inc, iterations=10)
+v = func.remove_outliers(v)
+func.draw(v, lon, lat, "data/CMOD4.png")
+
+model = Model.CMOD_IFR2()
+v = model.inverse(sigma0_obs=sigma0, phi=phi, incidence=inc, iterations=10)
+v = func.remove_outliers(v)
+func.draw(v, lon, lat, "data/CMOD_IFR2.png")

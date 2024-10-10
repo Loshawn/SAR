@@ -15,6 +15,16 @@ def save_csv(variable, save_path):
 
 
 def read_nc(nc_path, keys: list, step=1):
+    """
+    读取nc文件
+    输入参数:
+        nc_path :   nc文件路径
+        keys :      读取数据的键
+        step :      数据读取步长
+
+    输出参数:
+        datas :     keys 值 的 数据列表 
+    """
     filename = os.path.basename(nc_path)
     print(f"Reading data from {filename} ...")
 
@@ -41,8 +51,17 @@ def read_nc(nc_path, keys: list, step=1):
     print(f"Read Done .\n")
     return datas
 
-
 def fit_phi(nc_path, lon_fit, lat_fit):
+    """
+    拟合phi
+    输入参数:
+        nc_path :   nc文件路径
+        lon_fit :   需要拟合的经度数组
+        lat_fit :   需要拟合的纬度数组
+
+    输出参数:
+        phi_fit :   拟合的 phi 方位角
+    """
     print(f"Fitting phi ...")
     from scipy.interpolate import Rbf
 
@@ -60,112 +79,7 @@ def fit_phi(nc_path, lon_fit, lat_fit):
         return phi_fit
     else:
         raise Exception("The lon_fit and lat_fit must be one-dimensional data")
-
-
-def draw_2D(data, longitude=None, latitude=None, save_path=None, is_show=False):
-    """
-    绘制2D分布图。
-    输入相同大小的三个二维矩阵, 经纬度可不填。
-    """
-    print("Drawing... ")
-    if len(longitude.shape) == 1 and len(latitude.shape) == 1:
-        X, Y = np.meshgrid(longitude, latitude)
-
-    if len(longitude.shape) == 2 and len(latitude.shape) == 2:
-        latitude = np.ma.masked_equal(latitude, 0)
-        longitude = np.ma.masked_equal(longitude, 0)
-
-        x = np.linspace(np.min(longitude), np.max(longitude),
-                        longitude.shape[1])
-        y = np.linspace(np.max(latitude), np.min(latitude), latitude.shape[0])
-        X, Y = np.meshgrid(x, y)
-
-    if longitude is None and latitude is None:
-        plt.imshow(data, cmap='jet')
-        plt.axis('off')
-    else:
-        plt.pcolormesh(X, Y, data, vmin=0, cmap='jet')
-        plt.xlabel("longitude")
-        plt.ylabel("latitude")
-        
-    plt.axis('equal')
-    plt.colorbar(label='Speed (m/s)')
-    plt.title('Wind speed distribution')
-    print("Done.\n")
-
-    if save_path is not None:
-        print("Saving picture...")
-        plt.savefig(save_path, dpi=1000)
-        print("Done.\n")
-
-    if is_show:
-        plt.show()
-    plt.close()
-
-
-def draw(longitude, latitude, depth_data):
-    """
-    有错误
-    """
-    # 创建空白的网格
-    grid_size = (np.max(latitude) - np.min(latitude) + 1,
-                 np.max(longitude) - np.min(longitude) + 1)
-    depth_grid = np.empty(grid_size)
-    depth_grid[:] = np.nan  # 将空白网格的值设为NaN
-
-    # 将深度数据填入空白网格中的对应位置
-    for i in range(len(latitude)):
-        for j in range(len(longitude)):
-            depth_grid[latitude[i, j] - np.min(latitude),
-                       longitude[i, j] - np.min(longitude)] = depth_data[i, j]
-
-    # 绘制2D彩图
-    plt.figure(figsize=(8, 6))
-    plt.imshow(depth_grid,
-               extent=[
-                   np.min(longitude) - 0.5,
-                   np.max(longitude) + 0.5,
-                   np.min(latitude) - 0.5,
-                   np.max(latitude) + 0.5
-               ],
-               aspect='auto')
-    plt.colorbar(label='Depth (m)')
-    plt.xlabel('Longitude')
-    plt.ylabel('Latitude')
-    plt.title('Depth Distribution')
-    plt.show()
-
-
-def tif2excel(tif_file, save_path, max_size=16384):
-    """
-    tif转为excel。
-    尚未优化，别用，电脑会感谢你！
-    """
-    import rasterio
-    print("Reading...")
-    with rasterio.open(tif_file) as src:
-        x_start = (src.width - max_size) // 2
-        y_start = (src.height - max_size) // 2
-        num_bands = src.count
-
-        window = rasterio.windows.Window(x_start, y_start, max_size, max_size)
-        data = src.read(window=window)
-        print("Done.")
-
-        writer = pd.ExcelWriter(save_path)
-        for band in range(num_bands):
-            print(f"Conversing... ({band+1}/{num_bands})", end='\r')
-            df = pd.DataFrame(data[band])
-            sheet_name = f'Band_{band+1}'
-            df.to_excel(writer,
-                        sheet_name=sheet_name,
-                        index=False,
-                        header=False)
-        writer.save()
-
-    print("Done.\nConversion successful.")
-
-
+    
 def read_tif(tif_path: str, size=2000):
     """
     从tif文件中读取块, 返回numpy矩阵。
@@ -214,13 +128,64 @@ def read_tif(tif_path: str, size=2000):
 
 
 def read_csv(csv_path):
+    """
+    读取csv文件
+    """
     data = pd.read_csv(csv_path)
     return data.to_numpy()
+
+
+def draw(data, longitude=None, latitude=None, save_path=None, is_show=False):
+    """
+    绘制2D分布图。
+    输入相同大小的三个二维矩阵, 经纬度可不填。
+    """
+    print("Drawing... ")
+    if len(longitude.shape) == 1 and len(latitude.shape) == 1:
+        X, Y = np.meshgrid(longitude, latitude)
+
+    if len(longitude.shape) == 2 and len(latitude.shape) == 2:
+        latitude = np.ma.masked_equal(latitude, 0)
+        longitude = np.ma.masked_equal(longitude, 0)
+
+        x = np.linspace(np.min(longitude), np.max(longitude),
+                        longitude.shape[1])
+        y = np.linspace(np.max(latitude), np.min(latitude), latitude.shape[0])
+        X, Y = np.meshgrid(x, y)
+
+    if longitude is None and latitude is None:
+        plt.imshow(data, cmap='jet')
+        plt.axis('off')
+    else:
+        plt.pcolormesh(X, Y, data, vmin=0, cmap='jet')
+        plt.xlabel("longitude")
+        plt.ylabel("latitude")
+        
+    plt.axis('equal')
+    plt.colorbar(label='Speed (m/s)')
+    plt.title('Wind speed distribution')
+    print("Done.\n")
+
+    if save_path is not None:
+        print("Saving picture...")
+        plt.savefig(save_path, dpi=1000)
+        print("Done.\n")
+
+    if is_show:
+        plt.show()
+    plt.close()
+
 
 
 def remove_outliers(data, threshold=0.995):
     """
     去极值化, 保留前99.5%的数值
+    输入参数:
+        data :      原始数据
+        threshold : 阈值 
+
+    输出参数:
+        data :   去极值化后的数据
     """
     hist, bin_edges = np.histogram(data.compressed(), bins=np.arange(0,41,0.001),density=True)
     cumulative_prob = np.cumsum(hist) * 0.001
