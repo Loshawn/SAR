@@ -65,18 +65,19 @@ def fit_phi(nc_path, lon_fit, lat_fit):
     print(f"Fitting phi ...")
     from scipy.interpolate import Rbf
 
-    lon, lat, u10, v10 = read_nc(nc_path,
+    raw_lon, raw_lat, u10, v10 = read_nc(nc_path,
                                  ['longitude', 'latitude', 'u10', 'v10'])
+    
     phi = np.pi / 2 - np.arctan(v10 / u10)
     # 拟合与插值
-    lon, lat = np.meshgrid(lon, lat)
+    lon, lat = np.meshgrid(raw_lon, raw_lat)
     rbf = Rbf(lon, lat, phi, function='multiquadric')
 
     if len(lon_fit.shape) == 1 and len(lat_fit.shape) == 1:
         lon_fit, lat_fit = np.meshgrid(lon_fit, lat_fit)
         phi_fit = rbf(lon_fit, lat_fit)
         print(f"Fit Done .\n")
-        return phi_fit
+        return raw_lon, raw_lat, phi_fit
     else:
         raise Exception("The lon_fit and lat_fit must be one-dimensional data")
     
@@ -135,7 +136,7 @@ def read_csv(csv_path):
     return data.to_numpy()
 
 
-def draw(data, longitude=None, latitude=None, save_path=None, is_show=False):
+def draw(data, longitude=None, latitude=None, raw_lon=None, raw_lat=None, save_path=None, is_show=False):
     """
     绘制2D分布图。
     输入相同大小的三个二维矩阵, 经纬度可不填。
@@ -163,6 +164,16 @@ def draw(data, longitude=None, latitude=None, save_path=None, is_show=False):
         
     plt.axis('equal')
     plt.colorbar(label='Speed (m/s)')
+
+    if raw_lon is not None and raw_lat is not None:
+        for lon in raw_lon:
+            for lat in raw_lat:
+                indices = np.argwhere((np.abs(X - lon) < 0.005) & (np.abs(Y - lat) < 0.005))
+                if indices.size == 0 or data.mask[indices[0][0], indices[0][1]]:
+                    continue
+                plt.scatter(lon, lat, color='red', marker='x')
+        
+    
     plt.title('Wind speed distribution')
     print("Done.\n")
 
